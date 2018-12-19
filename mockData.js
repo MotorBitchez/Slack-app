@@ -17,7 +17,7 @@ const mockData = {
   },
   orientation: 'horizontal',
   user: { 
-    slackAccessToken: 'xoxp-487766218372-493289752368-496974095332-c4897b034f45a9d2c291e513eee9f869'
+    slackAccessToken: ''
   },
   port: 8001
 }
