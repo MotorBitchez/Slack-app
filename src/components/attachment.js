@@ -1,227 +1,73 @@
-import React from 'react';
-import {css} from 'react-emotion'; 
-import {prepareText} from './elements';
+import {prepareText} from "./elements";
+import React from "react";
+import {css} from "emotion";
+import {AttachmentAuthor} from "./attachment-author";
+import {AttachmentFields} from "./attachment-fields";
+import {AttachmentImage} from "./attachment-image";
+import {AttachmentFooter} from "./attachment-footer";
+import {AttachmentActions} from "./attachment-actions";
+import {AttachmentThumb} from "./attachment-thumb";
+import {Reactions} from "./reactions";
 
-const AttachmentAuthor = (props) => {  
-  let image;
-  if (props.attachment.service_icon){
-    image = <img src={props.attachment.service_icon} />;
-  }
-  return (
-    <div id="author">
-      {image}
-      <span>{props.attachment.service_name}</span>
-    </div>
-  );
-};
-
-const AttachmentFields = props => {
-  return (
-    <div className={attachmentFieldStyle}>
-      {props.attachment.fields.map(field => {
-        let shortStyle;
-        if (field.short){
-          shortStyle= {display: 'inline-block', marginRight: '35px'};
-        }
-        return (
-          <div id="field" style={shortStyle} key={field.title + field.value}>
-            <p><strong>{field.title}</strong></p>
-            <p>{field.value}</p>
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
-const attachmentFieldStyle = css`
-  padding: 5px 0 5px 0;  
-  #field{
-    padding: 5px 0;
-  }
-`;
-
-const AttachmentImage = props => {  
-  let dateInfo;
-  if (props.attachment.ts){
-	  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'June', 'July', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
-    const date=  new Date(props.attachment.ts*1000); 
-    dateInfo = <span style={{color: 'gray', margin: '10px 0 4px 0'}}>{months[date.getMonth()] + ' ' + date.getDate()}</span>
-  }
-  return (
-    <div style={{display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start'}}>
-      {dateInfo}
-      <img src={props.attachment.image_url} style={{maxHeight: '200px', maxWidth: '200px', borderRadius: '5px',
-      border: '1px solid lightgray'}}  />
-    </div>
-  );
-};
-
-const AttachmentThumb = props => {
-  if (!props.attachment.thumb_url) return null;
-  return <div style={{width: '75px', height: '75px', backgroundImage: `url(${props.attachment.thumb_url})`, backgroundSize: 'cover' }}/>;
-};
-
-const AttachmentFooter = (props) => {
-  let image, time;
-  if (props.attachment.footer_icon){
-    image = <img style={{height: '100%', width: 'auto', paddingRight: '7px'}} src={props.attachment.footer_icon} />;
-  }
-  if (props.attachment.ts){
-    const date = new Date(props.attachment.ts*1000);
-    time = (
-      <span style={{padding: '0 5px', color: 'gray'}}>
-        {Intl.DateTimeFormat('en-US', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}).format(date)}
-      </span>
-    );
-  }
-  return (
-    <div style={{width: '100%', height: '30px', display: 'flex', justifyContent: 'flex-start', alignItems: 'center', paddingTop: '6px', fontSize: '0.9em'}}>
-      {image}
-      <span style={{color: 'gray'}}>{props.attachment.footer}</span>
-      {time}
-    </div>
-  );
-};
-
-const AttachmentActions = (props) => {  
-  let colorStyle = {borderColor: 'gray', color: 'black'};
-  return (
-    <div className={attachmentActionStyle}>
-      {props.attachment.actions.map(action => {
-        if (action.style == 'danger'){
-          colorStyle = {borderColor: 'red', color: 'red'};
-        } else if (action.style == 'primary'){
-          colorStyle = {borderColor: '#008952', color: '#008952'}
-        }
-        if (action.type == 'button'){
-          return <button id="action-button" style={colorStyle} key={action.text + action.url + action.type}>{action.text}</button>
-        }
-        if(action.type == 'select'){
-          return (
-            <select id="action-select" key={action.text + action.url + action.type}>
-              <option>{action.text || 'Choose an option...'}</option>
-            </select>
-          );
-        }
-        return null;
-      })}
-    </div>
-  );
-};
-
-const attachmentActionStyle = css` 
-  padding: 5px;
-  #action-button{
-    height: 30px;
-    background: white;
-    border: 1px solid;
-    border-radius: 4px; 
-    font-weight: bold; 
-    margin: 5px;
-  }
-  #action-select{
-    margin: 5px;
-    width: 200px;
-    height: 30px;
-    background: white;
-    border: 1px solid;
-    border-radius: 4px; 
-    color: rgb(90, 90, 90); 
-  }
-`;
-
-export const Attachment = (props) => {
-  let pretext, title, text;
+export const Attachment = ({attachment, reactions, users, bots}) => {
   let color = 'rgba(0, 0, 0, 0.2)';
-  if (props.attachment.color){
-    if (props.attachment.color == 'good'){
-      color = 'limegreen';
-    } else if (props.attachment.color == 'warning'){
-      color = 'orange';
-    } else if (props.attachment.color == 'red'){
-      color = 'red';
-    } else {
-      color = '#'+props.attachment.color
+  if (attachment.color) {
+    switch (attachment.color) {
+      case 'good':
+        color = 'limegreen';
+        break;
+      case 'warning':
+        color = 'orange';
+        break;
+      case 'red':
+        color = 'red';
+        break;
+      default:
+        color = `#${attachment.color}`;
+        break;
     }
   }
 
-  if (props.attachment.pretext){
-    pretext = <p style={{paddingTop: '10px'}}>{props.attachment.pretext}</p>
-  }
-
-  if (props.attachment.title){
-    if (props.attachment.title_link){
-      title = <div id="title_link">{props.attachment.title}</div>
-    } else {
-      title = <div id="title">{props.attachment.title}</div>
-    }
-  }
-
-  if (props.attachment.text){
-    text = <div id="text" >{prepareText(props.attachment.text, props.users, props.channels)}</div>
-  } 
-
-  let thumbStyle = {display: 'grid', gridTemplateColumns: 'auto'};
-  if (props.attachment.thumb_url){
-    thumbStyle = {display: 'grid', gridTemplateColumns: 'auto 75px'};
-  }
   return (
-    <div className={attachmentStyle}>
-      {pretext}
-      <div style={thumbStyle}>
-        <div style={{borderLeft: `4px solid ${color}`, marginTop: '10px', padding: '0 10px'}}>
-          {props.attachment.service_icon && <AttachmentAuthor attachment={props.attachment} />}
-          {title}
-          {text}
-          {props.attachment.fields &&  <AttachmentFields attachment={props.attachment} />}
-          {props.attachment.image_url && <AttachmentImage attachment={props.attachment} /> }
-          {(props.attachment.footer || props.attachment.footer_icon) && <AttachmentFooter attachment={props.attachment} /> }
-          {props.attachment.actions && <AttachmentActions attachment={props.attachment} /> }
+    <div className={attachmentStyle(attachment, color)}>
+      {attachment.pretext && <div className={'pretext'}>{prepareText(attachment.pretext, users, bots)}</div>}
+      <div className={'thumb'}>
+        <div>
+          {attachment.service_icon && <AttachmentAuthor attachment={attachment} />}
+          {attachment.title && <div className={attachment.title_link ? 'title_link' : 'title'}>{attachment.title}</div>}
+          {attachment.text && <div className={'text'}>{prepareText(attachment.text, users, bots)}</div>}
+          {attachment.fields &&  <AttachmentFields attachment={attachment} />}
+          {attachment.image_url && <AttachmentImage attachment={attachment} /> }
+          {(attachment.footer || attachment.footer_icon) && <AttachmentFooter attachment={attachment} /> }
+          {attachment.actions && <AttachmentActions attachment={attachment} /> }
         </div>
-        {props.attachment.thumb_url && <AttachmentThumb attachment={props.attachment} />}
+        {attachment.thumb_url && <AttachmentThumb attachment={attachment} />}
       </div>
     </div>
   );
 };
 
-const attachmentStyle = css ` 
-  #title_link{
+const attachmentStyle = (attachment, color) => css`
+  margin-bottom: 5px;
+  & > .thumb {
+    display: grid;
+    grid-template-columns: ${attachment.thumb_url ? 'auto 75px' : 'auto'};
+    & > div:first-child {
+      border-left: 4px solid ${color};
+      margin-top: 10px;
+      padding: 0 10px;
+    }
+  }
+  .title_link{
     font-weight: bold;
     color: dodgerblue;
     padding-bottom: 5px;
   }
-  #title{
+  .title{
     font-weight: bold;
     padding: 2px 0;
   }
-  #author{
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    width: 100%;
-    height: 22px;
-    padding: 0 0 6px 2px;
-  }
-  #author img{
-    height: 100%;
-    width: auto;
-    border-radius: 5px;
-    margin-right: 8px;
-  }
-  #author span{
-    color: rgb(90, 90, 90);
-  }
-  #footer{
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    height: 25px;
-  }
-  #footer img{
-    height: 100%;
-  }
-  #text{
+  .text{
     line-height: 25px;
   }
 `;

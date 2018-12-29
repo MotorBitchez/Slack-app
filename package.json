@@ -1,7 +1,7 @@
 {
-  "name": "slackintegration",
-  "version": "1.0.8",
-  "description": "Slack Integration for Dashmon",
+  "name": "slackintegrationhakan",
+  "version": "1.0.9",
+  "description": "Hakan Test Slack Integration for Dashmon",
   "main": "index_bundled.js",
   "scripts": {
     "webpack:client:dev": "webpack --config webpack.client.js --env.mode=development",
@@ -26,16 +26,15 @@
     "babel-loader": "8.0.2",
     "concurrently": "^4.0.1",
     "date-fns": "^1.30.1",
-    "emotion": "9.2.8",
-    "express": "4.16.3",
-    "react": "16.7.0",
-    "react-dom": "16.7.0",
-    "react-emotion": "9.2.8",
-    "xml2js": "^0.4.19"
+    "emojione": "^4.0.0",
+    "emotion": "^9",
+    "react": "16.7.0-alpha.2",
+    "react-dom": "16.7.0-alpha.2",
+    "react-emotion": "^9"
   },
   "devDependencies": {
     "css-loader": "1.0.0",
-    "emojione": "^4.0.0",
+    "express": "4.16.3",
     "file-loader": "2.0.0",
     "html-webpack-plugin": "3.2.0",
     "style-loader": "0.23.0",
@@ -45,10 +44,10 @@
   },
   "dashmon": {
     "template": "react-1",
-    "displayName": "Slack",
+    "displayName": "Test Slack",
     "fields": [
       {
-        "type": "slack",
+        "type": "slacknew",
         "label": "Source",
         "identifier": "slackData"
       }

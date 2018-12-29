@@ -1,29 +1,26 @@
 import React from 'react';
 import emojione from 'emojione';
-import {css} from 'react-emotion';  
+import {css} from 'emotion';
 
 let currentText = '';
 
-export const Reaction =  (props) =>{
-  const content = props.reactions.map(reaction => {
-    const html = `${emojione.shortnameToImage(':'+reaction.name+':')}  <span>${reaction.count}</span>`;
-    if (!html.includes('<img')) return null;
-    return <div className={singleReactionStyle} dangerouslySetInnerHTML={{__html: html}} key={reaction.name}/>
-  });
-  return (
-    <div className={reactionContainer} >
-      {content}
-    </div>
-  );
-};
+export const ReactionOld = ({reactions}) => (
+  <div className={reactionContainer}>
+    {reactions.map(reaction => {
+      const html = `${emojione.shortnameToImage(':'+reaction.name+':')}<span>${reaction.count}</span>`;
+      if (!html.includes('<img')) return null;
+      return <div className={singleReactionStyle} dangerouslySetInnerHTML={{__html: html}} key={reaction.name}/>
+    })}
+  </div>
+);
  
-export function prepareText(message, users, channels){
+export function prepareText(message, users, bots){
   currentText = message.trim();
-  convertTags(users, channels);
+  convertTags(users, bots);
   convertBoldText();
   currentText = emojione.shortnameToImage(currentText);
   function createMarkup(){return {__html: currentText}}
-  return <span className={singleMessageStyle} key={Math.random()*15141413} dangerouslySetInnerHTML={createMarkup()} />
+  return <span className={singleMessageStyle} dangerouslySetInnerHTML={createMarkup()} />
 }
 
 let boldTextIndex = 0;
@@ -43,7 +40,7 @@ function convertBoldText(){
 }
 
 let textIndex = 0;
-function convertTags(users, channels){
+function convertTags(users, bots){
  const tagStart = currentText.indexOf('<', textIndex);
  if (tagStart !== -1){
 	textIndex = tagStart + 1;
@@ -51,9 +48,9 @@ function convertTags(users, channels){
     if (tagEnd !== -1){
       const content = currentText.slice(tagStart+1, tagEnd);
       if (content.indexOf('#') == 0){ //if its channel
-        convertChannelTag(content, channels);
+        convertChannelTag(content);
       } else if (content.indexOf('@') == 0){ //if its user
-        convertUserTag(content, users);
+        convertUserTag(content, users, bots);
       } else if(content.indexOf('http') == 0){//if its a link
         convertLinkTag(content);
       } else if(content.indexOf('mailto:') == 0){ //if its a mail
@@ -61,9 +58,6 @@ function convertTags(users, channels){
       } else if(content.indexOf('!date') == 0){ //if its a date
 				convertDateTag(content);
 			}
-			/* else if(content.indexOf('!everyone') == 0){
-				convertVariableTag(content, 'everyone');
-			}*/
       convertTags();
 	  }
   } else {
@@ -204,7 +198,7 @@ function convertLinkTag(content){
  	currentText = currentText.replace('<' + content + '>', convertedContent);
 }
 
-function  convertUserTag(content, users){ 
+function  convertUserTag(content, users, bots){
   const arr = content.split('|'); 
   let convertedContent;
   for (let i = 0; i < arr.length; i++){
@@ -214,8 +208,9 @@ function  convertUserTag(content, users){
   }
   if (convertedContent){
     convertedContent = convertedContent.replace('@', '');
-    const findedUser = users.find(user => user.id == convertedContent);
-    convertedContent = `<span style="font-weight: bold; color: navy"> ${findedUser.profile.real_name}</span>`;
+    let foundUser = users.find(user => user.id === convertedContent);
+    if (!foundUser) foundUser = bots.find(bot => bot.id === convertedContent);
+    convertedContent = `<span style="font-weight: bold; color: navy"> ${foundUser.profile.real_name}</span>`;
   } else {
 		convertedContent = `<span style="font-weight: bold; color: navy"> ${arr[0]}</span>`;
   }
@@ -224,7 +219,6 @@ function  convertUserTag(content, users){
 
 function  convertChannelTag(content){
   const arr = content.split('|'); 
-  console.log(content);
   let convertedContent;
   for (let i = 0; i < arr.length; i++){
     if (arr[i].indexOf('#') == 0){
@@ -263,7 +257,7 @@ const singleReactionStyle = css`
   }
   span{
     font-size: 0.7em;
-    color: blue;
+    color: #0576b9;
     font-weight: bold;
     padding-right: 3px;
   }

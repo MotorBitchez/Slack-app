@@ -2,6 +2,7 @@ import path from 'path';
 import express from 'express';
 import mockData from './mockData';
 import axios from 'axios';
+import dateFns from 'date-fns';
 const isDevMode = process.argv.includes('dev');
 
 let _port = 80;
@@ -48,12 +49,6 @@ function createServer({content, orientation, port, user}){
   app.get('/info', (req, res) => {
     res.send(content);
   });
-  app.get('/update', (req, res) => {
-    res.send({
-      messages, 
-      typingUsers
-    });
-  });
   app.listen(port, () => {
     log({message: `Listening on port ${port}`});
     ready();
@@ -85,225 +80,91 @@ if(isDevMode){
   });
 }
 
-let messages = [];
-let typingUsers = [];
 async function init({content, orientation, port, user}){
   try {
-    let promises = [];
-    promises.push(getUsers(user.slackAccessToken));
-    promises.push(getBots(user.slackAccessToken)); 
-    promises.push(getMessages(user.slackAccessToken, content.slackData.channel.id));
-    promises.push(getTeamInfo(user.slackAccessToken));
-    promises.push(getCustomEmojis(user.slackAccessToken));
-    let slackRes = await Promise.all(promises);
-    content.users = slackRes[0];
-    content.bots = slackRes[1];
+    let initialPayload = await axios.post('https://dashboard.dashmon.com/api/slackinitialinfo', {contentId: content._id});
+    content.users = initialPayload.data.users;
+    content.bots = initialPayload.data.bots;
     content.channelName = content.slackData.channel.name;
-    content.team = slackRes[3];
-    content.emoji_list = slackRes[4];
-    content.slackAccessToken = user.slackAccessToken;
-    content.selectedChannel = content.slackData.channel.name;
-    content.typingUsers= typingUsers;
-    const selectedBots = content.slackData.bots.map(bot => bot.id);
-    content.selectedBots = selectedBots;
-    const selectedUsers = content.slackData.users.map(user => user.id);
-    content.selectedUsers = selectedUsers;
-    const filteredMessages = filterMessages(slackRes[2], 
-      selectedUsers, content.slackData.allUsers, 
-      selectedBots, content.slackData.allBots);
-    buildMessagesObject(filteredMessages);
-    content.messages = messages;
-    setInterval(() => getDataManual(user, content, selectedUsers, selectedBots), 5000);
+    content.team = initialPayload.data.team;
+    content.emojis = initialPayload.data.emojis;
+    content.selectedUserIds = content.slackData.users.map(user => user.id);
+    content.initial = initialPayload.data;
+    let rawMessages = initialPayload.data.messages.filter(message => {
+      // filter out join etc. messages
+      if (message.subtype && ['channel_join', 'bot_add', 'bot_remove'].includes(message.subtype)) return false;
+      // filter out bot messages if apps are not selected
+      if (!content.slackData.showApps && message.subtype && message.subtype === 'bot_message') return false;
+      // filter out unselected users if all users is not selected
+      if (!content.slackData.allUsers && message.user && !content.selectedUserIds.includes(message.user)) return false;
+      return true;
+    });
+    content.data = setProfiles(processMessages(rawMessages), content.bots, content.users);
   } catch (err) {
-    console.log(err);
+    content.error = err.message;
+    log({message: err.message});
   }
 }
 
-async function getDataManual(user, content, selectedUsers, selectedBots){
-  try {
-    let newMessages = await getMessages(user.slackAccessToken, content.slackData.channel.id);
-    messages = [];
-    let newFilteredMessages = filterMessages(newMessages,
-      selectedUsers, content.slackData.allUsers,
-      selectedBots, content.slackData.allBots);
-    buildMessagesObject(newFilteredMessages, user.slackAccessToken);
-    content.messages = messages;
-  } catch (error) {
-    console.log('@getDataManual', error.message);
-    throw error;
+/*
+[
+  {
+    date,
+    entries: [
+      { userId,
+        ts,
+        texts [ {text, reactions, file | attachment} ] }
+    ]
   }
-}
+]
+*/
 
-function buildMessagesObject(_messages){
-  let lastDifferentMessageDay = '';
-  let isToday = false;
-  let previousMessageDate;
-  for (let i = _messages.length - 1; i >= 0; i--){
-    const currentMessage = _messages[i]; 
-    const previousMessage = messages[messages.length-1];
-    const days=['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
-    const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-    const messageDate = new Date(currentMessage.ts * 1000);
-    const messageTime = messageDate.getHours() + ':' + ('0' + messageDate.getMinutes()).slice(-2); 
-    const key = currentMessage.ts + currentMessage.text;
-    let now = new Date();
-    const today = days[now.getDay()] + ', ' + months[now.getMonth()] + ' ' + now.getDate();
-    let messageDay = days[messageDate.getDay()] + ', ' + months[messageDate.getMonth()] + ' ' +  messageDate.getDate();
-    let isMinuteLater = false; 
-    if (previousMessageDate){
-      isMinuteLater = messageDate.getMinutes() === previousMessageDate.getMinutes();
+function processMessages(rawMessages){
+  let data = [];
+  let firstMessage = rawMessages[0];
+  let currentDay = {date: firstMessage.ts, entries: []};
+  for (let index in rawMessages) {
+    let currentMessage = rawMessages[index];
+    let previousMessage = rawMessages[index - 1];
+    let diff = Math.abs(dateFns.differenceInCalendarDays(new Date(currentMessage.ts * 1000), new Date(currentDay.date * 1000)));
+    if (diff > 0) {
+      data.push(currentDay);
+      currentDay = {date: currentMessage.ts, entries: []};
     }
-    previousMessageDate = messageDate;
-    if (messages.length === 0){
-      if (today === messageDay){
-        messageDay = 'Today'; 
-        isToday = true;
+    if (currentMessage.subtype && currentMessage.subtype === 'bot_message') {
+      currentDay.entries.push(currentMessage);
+      continue;
+    }
+    if (currentMessage.files || currentMessage.attachments) {
+      currentDay.entries.push(currentMessage);
+      continue;
+    }
+    if (previousMessage && previousMessage.user === currentMessage.user &&
+      !previousMessage.files && !previousMessage.attachments &&
+      !dateFns.isAfter(new Date(currentMessage.ts * 1000), dateFns.addMinutes(new Date(previousMessage.ts * 1000), 1)) &&
+      dateFns.differenceInCalendarDays(new Date(currentMessage.ts * 1000), new Date(currentDay.date * 1000)) < 1 &&
+      currentDay.entries[currentDay.entries.length - 1]
+    ) {
+      currentDay.entries[currentDay.entries.length - 1].texts.push({text: currentMessage.text, reactions: currentMessage.reactions});
+      continue;
+    }
+    currentMessage.texts = [{text: currentMessage.text, reactions: currentMessage.reactions}];
+    currentDay.entries.push(currentMessage);
+  }
+  data.push(currentDay);
+  return data;
+}
+
+function setProfiles(_data, bots, users){
+  let data = Array.from(_data);
+  data.forEach(day => {
+    day.entries.forEach(entry => {
+      if (entry.subtype && entry.subtype === 'bot_message') {
+        entry.profile = bots.find(bot => bot.id === entry.bot_id);
       } else {
-        lastDifferentMessageDay = messageDay;
+        entry.profile = users.find(user => user.id === entry.user);
       }
-      if (currentMessage.subtype){
-        messages.push(createSubtypeMessageObj(currentMessage, messageDay, messageTime, key))
-      } else {
-        messages.push({
-          user: currentMessage.user, 
-          messageDay, 
-          messageTime, 
-          texts: [currentMessage. text],
-          files: currentMessage.files,
-          attachments: currentMessage.attachments,
-          reactions: currentMessage.reactions,
-          key
-        });
-      }
-    } else { // if its not first message
-      // arka arkaya attachment gönderildi ise onlarıda birleştireceğiz koşul buraya
-      if (!currentMessage.subtype && previousMessage.user === currentMessage.user && isMinuteLater && previousMessage.subtype !== 'channel_join'){
-        previousMessage.texts.push(currentMessage.text);
-      } else {
-        if (isToday){//önceki mesaj bugün ise sonraki mesajlarda direk bugün olur
-          messageDay = false;
-        } else {
-          if (today === messageDay){
-            messageDay = 'Today';
-            isToday = true;
-          } else if (lastDifferentMessageDay !== messageDay){
-            lastDifferentMessageDay = messageDay;
-          } else {
-            //messageDay = false olduğu zaman map ile elemen oluşturma sırasında gün ile alakalı herhangi bir işlem yapılmayacak
-            messageDay = false;
-          }
-        }
-        if (currentMessage.subtype){
-          messages.push(createSubtypeMessageObj(currentMessage, messageDay, messageTime, key))
-        } else {
-          messages.push({
-            user: currentMessage.user, 
-            messageDay, 
-            messageTime, 
-            texts: [currentMessage. text],
-            files: currentMessage.files,
-            attachments: currentMessage.attachments,
-            reactions: currentMessage.reactions,
-            key
-          });
-        }
-      }
-    }
-  }
-  messages = messages.slice(-20);
-}
-
-function createSubtypeMessageObj(message, messageDay, messageTime, key){
-  if (['bot_add', 'bot_remove'].includes(message.subtype)){
-    return {
-      user: message.user,
-      bot: message.bot_id,
-      messageDay,
-      messageTime,
-      subtype: message.subtype,
-      text: message.text,
-      key
-    }
-  }
-  if (message.subtype === 'bot_message'){
-    return {
-      user: message.user,
-      bot: message.bot_id,
-      messageDay,
-      messageTime,
-      subtype: message.subtype,
-      text: message.text,
-      files: message.files,
-      attachments: message.attachments,
-      reactions: message.reactions,
-      key,
-    }
-  }
-  if (message.subtype === 'channel_join'){
-    return {
-      user: message.user,
-      messageDay,
-      messageTime,
-      subtype: message.subtype,
-      text: message.text,
-      key: key + message.user
-    }
-  }
-  return { user: 'unknown subtype' + message.subtype};
-}
-
-function filterMessages(messageData, selectedUsers, allUsers, selectedBots, allBots){
-  // const isAllUsers = selectedUsers.find(user => user.id == 'all');
-  // const isAllBots = selectedBots.find(bot => bot.id == 'all');
-  return messageData.filter(message => {
-    if (!message.subtype && (selectedUsers.includes(message.user) || allUsers)) return false;
-    if (message.subtype == 'channel_join') return true;
-    if (['bot_add', 'bot_message'].includes(message.subtype) && (selectedBots.includes(message.bot_id) || allBots)) return true;
+    });
   });
-}
-
-async function getTeamInfo(token){ 
-  try {
-    let res = await axios.get(`https://slack.com/api/team.info?token=${token}`); 
-    return res.data.team;
-  } catch (err){
-    console.log('@getting data error', err);
-  }
-}
-
-async function getMessages(token, channel){ 
-  try {
-    let res = await axios.get(`https://slack.com/api/channels.history?token=${token}&channel=${channel}`); 
-    return res.data.messages;
-  } catch (err){
-    console.log('@getMessages', err);
-  }
-}
-
-async function getUsers(token){ 
-  try {
-    let res = await axios.get(`https://slack.com/api/users.list?token=${token}`);
-    return res.data.members;
-  } catch (err){
-    console.log('@getUsers', err.message);
-  }
-} 
-
-// todo remove below
-async function getBots(token){ 
-  try {
-    let res = await axios.get(`https://slack.com/api/bots.list?token=${token}`);
-    return res.data.bots;
-  } catch (err){
-    console.log('@getBots', err.message);
-  }
-}
-
-async function getCustomEmojis(token){
-  try {
-    let res = await axios.get(`https://slack.com/api/emoji.list?token=${token}`);
-    return res.data.emoji;
-  } catch (err){
-    console.log('@getCustomEmojis', err.message);
-  }
+  return data;
 }

@@ -1,18 +1,222 @@
-const part1 = 'x|o';
-const part8 = 'c1|dc|9d|7|a9';
-const part2 = 'x|p|-';
-const part6 = '53|64-5|7db|1db9';
-const part7 = '275|18a70|886|8117';
-const part4 = '72-48|783|3408';
-const part5 = '48|3-50|9692|00';
-const part3 = '487|766|21|83';
+const os = require('os');
 
-let slackAccessToken = getToken(`${part1}${part2}${part3}${part4}${part5}${part6}${part7}${part8}`)
-console.log(slackAccessToken);
+let x = `Screens: 'Screens',
+Contents: 'Contents',
+Playlists: 'Playlists',
+Apps: 'Apps',
+AddScreen: 'Add Screen',
+All: 'All',
+Images: 'Images',
+Videos: 'Videos',
+Web: 'Web',
+search: 'search',
+Upload: 'Upload',
+App: 'App',
+Clock: 'Clock',
+Geckoboard: 'Geckoboard',
+RSS: 'RSS',
+Traffic: 'Traffic',
+Weather: 'Weather',
+Website: 'Website',
+Calendar: 'Calendar',
+Counter: 'Counter',
+DashmonStore: 'Dashmon Store',
+DragAndDrop: 'Drag and Drop',
+YourFiles: 'Your Files',
+or: 'or',
+Or: 'Or',
+SelectFiles: 'Select Files',
+SupportedFileTypesAre: 'Supported File Types are',
+Close: 'Close',
+Newest: 'Newest',
+Oldest: 'Oldest',
+FilterByTags: 'Filter by tags',
+NewPlaylist: 'New Playlist',
+TotalTime: 'Total Time',
+ApplyToScreens: 'Apply to Screens',
+AddContentToPlaylist: 'Add Content to Playlist',
+DeletePlaylist: 'Delete Playlist',
+Delete: 'Delete',
+MultiSelect: 'Multi Select',
+AddNewTag: 'Add new tag',
+EditApp: 'Edit App',
+PlaylistsWithThisContent: 'Playlists with this content',
+SelectPlaylists: 'Select Playlists',
+Cancel: 'Cancel',
+ShareToPlaylists: 'Share to Playlists',
+SelectAll: 'Select All',
+DeselectAll: 'Deselect All',
+ContentsSelected: 'Contents Selected',
+NowPlaying: 'Now Playing',
+ThereAre: 'There are',
+contents: 'contents',
+inPlaylist: 'in playlist',
+photos: 'photos',
+videos: 'videos',
+apps: 'apps',
+Remove: 'Remove',
+RemoveThisPlaylistFromScreen: 'Remove This Playlist From Screen',
+Import: 'Import',
+CreateApps: 'Create Apps',
+AreYouSureToDeleteThisPlaylist: 'Are You Sure to Delete This Playlist?',
+SelectScreens: 'Select Screens',
+ClockDescription: 'Clock Description',
+GeckoboardDescription: 'Geckoboard Description',
+RSSDescription: 'RSS Description',
+GoogleTrafficDescription: 'Google Traffic Description',
+WeatherDescription: 'Weather Description',
+WebsiteDescription: 'Website Description',
+GoogleCalendarDescription: 'Google Calendar Description',
+MessageCounterDescription: 'Message Counter Description',
+FreeApps: 'Free Apps',
+Save: 'Save',
+Update: 'Update',
+Title: 'Title',
+EnterName: 'Enter name',
+SearchLocation: 'Search Location',
+AddNewAppOrUpdateExistingApp: 'Add new app or update existing app',
+Documentation: 'Documentation',
+SDKDescription: 'You can build your own apps using our SDK',
+BuildYourOwnApp: 'Build your own app',
+Name: 'Name',
+Identifier: 'Identifier',
+Version: 'Version',
+CompanyLogo: 'Company Logo',
+Profile: 'Profile',
+Username: 'Username',
+CompanyName: 'Company Name',
+EmailAddress: 'E-mail Address',
+ChangePassword: 'Change Password',
+ChangeEmail: 'Change E-mail',
+Confirm: 'Confirm',
+SignIn: 'Sign In',
+Invite: 'Invite',
+ClickToUpload: 'Click to Upload',
+CurrentPassword: 'Current Password',
+NewPassword: 'New Password',
+NewPasswordConfirm: 'New Password Confirm',
+NewEmailAddress: 'New E-mail Address',
+NewEmailAddressConfirm: 'New E-mail Address Confirm',
+SignOut: 'Sign Out',
+SignUp: 'Sign Up',
+Password: 'Password',
+RememberMe: 'Remember Me',
+ForgotPassword: 'Forgot Password?',
+SignUpNow: 'Sign Up Now',
+AlreadySignedUp: 'Already Signed Up',
+PasswordConfirmation: 'Password Confirmation',
+SignInNow: 'Sign In Now',
+ResetPassword: 'Reset Password',
+Location: 'Location',
+AddNewScreen: 'Add New Screen',
+ScreenName: 'Screen Name',
+Create: 'Create',
+AreYouSureToDeleteThisContent: 'Are You Sure to Delete This Content?',
+cancel: 'cancel',
+ContentPreview: 'Content Preview',
+PurchaseScreen: 'Purchase',
+CouldNotUpdateAppContent: 'Couldn't Update App Content',
+AppContentSuccessfullyUpdated: 'App Content Successfully Updated',
+LocationIsRequired: 'Location is required',
+ContentNameIsRequired: 'Content name is required',
+IncorrectInfoPleaseSearchLocationAgain: 'Incorrect info, please search location again',
+ShareLinkIsRequired: 'Share link is required',
+YouMustSelectAtLeastOneCalendar: 'You must select at least one calendar',
+YouNeedToAllowDashmonToAccessYourAccount: 'You need to allow DashMon to access your account',
+SignInToGoogleCalendar: 'Sign In to Google Calendar',
+TypeYourMessage: 'type your message',
+YourMustSelectADateOrTypeAMessage: 'You must select a date or type a message',
+UrlIsNotAValidRSSFeed: 'Url is not a valid RSS Feed',
+RSSUrlIsRequired: 'RSS Url is required',
+EnterRSSLink: 'Type RSS Link',
+mins: 'mins',
+min: 'min',
+Unit: 'Unit',
+UrlIsRequired: 'Url is required',
+ChangesCancelled: 'Changes Cancelled',
+CouldNotSave: 'Couldn't save',
+Saved: 'Saved',
+EditContentName: 'Edit Content Name',
+None: 'None',
+FileIsSuccessfullyUploaded: 'File is Successfully Uploaded',
+CouldNotUploadFile: 'Could Not Upload File',
+Uploading: 'Uploading',
+Processing: 'Processing',
+FailedForgotPassword: 'Failed to send e-mail or no user found with the given e-mail',
+SuccessForgotPassword: 'Password reset e-mail is sent successfully',
+TypeContentName: 'type content name',
+YouHaveUnsavedChanges: 'You have unsaved changes, they will be lost if not saved!',
+SaveYourChanges: 'Save Your Changes',
+AreYouSureToRemoveThisContentFromPlaylist: 'Are you sure to remove this content from playlist?',
+YouNeedToSaveOrCancelChanges: 'You need to save or cancel changes',
+DeleteNewPlaylist: 'Delete New Playlist',
+PasswordResetSuccessfully: 'Password reset successfully',
+PasswordsDontMatch: 'Passwords don't match',
+ResetPasswordLinkIsExpired: 'Reset password link is expired',
+ScreenIsNotOnline: 'Screen is offline',
+ScreenshotIsBeingTaken: 'Screenshot is being taken',
+ScreenIsRestarted: 'Screen is restarted',
+ScreenIsDeleted: 'Screen is deleted',
+ScreenNameCannotBeEmpty: 'Screen name cannot be empty',
+CouldNotUpdateScreenName: 'Couldn't update screen name',
+ScreenNameUpdated: 'Successfully updated screen name',
+DefaultPlaylist: 'Default Playlist',
+AreYouSureToRemovePlaylistFromScreen: 'Are you sure to remove playlist from screen?',
+Screenshot: 'Take Screenshot',
+AreYouSure: 'Are You Sure?',
+Yes: 'Yes',
+No: 'No',
+AreYouSureToRestartYourScreen: 'Are you sure to restart your screen?',
+Restart: 'Restart',
+AreYouSureToDeleteThisScreen: 'Are you sure to delete this screen? This can\\'t be undone!',
+DeleteScreen: 'Delete Screen',
+WifiNames: 'Connected Wifi Name',
+RestartYourScreenToSeeConnectedWifi: 'Restart Your Screen to See Connected Wifi Name',
+EmailsDontMatch: 'E-mails don't match',
+UserInvited: 'User is invited',
+UserNotInvited: 'An error happened, user is not invited',
+CouldNotSignIn: 'Could not Sign In',
+EmailIsRequired: 'E-mail Address is required',
+PasswordIsRequired: 'Password is required',
+EmailAddressIsNotValid: 'E-mail Address is not valid',
+CouldNotSignUp: 'Could not sign up, try again',
+SignedUp: 'Signed up successfully',
+AnErrorHappened: 'An error happened',
+ScreenSuccessfullyRegistered: 'Screen is Successfully Registered'`;
 
-function getToken(token){
-  while (token.includes('|')) {
-    token = token.replace('|', '');
+x = x.split(',');
+
+// x = x.map(a => {
+//   let newText = '';
+//   let process = false;
+//   for(let c of a){
+//     if (c === `'` && !process) {
+//       process = true;
+//       continue;
+//     }
+//     if (process && c !== `'`) newText += c;
+//     if (c === `'` && process) process = false;
+//   }
+//   return newText;
+// });
+
+x = x.map(a => {
+  let newText = '';
+  let process = true;
+  for (let c of a){
+    if (c === ':') {
+      process = false;
+    }
+    if (process) newText += c;
   }
-  return token;
+  return newText;
+});
+
+x = x.join();
+
+while (x.includes(',')) {
+  x = x.replace(',', '');
 }
+
+console.log(x);
+
