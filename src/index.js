@@ -34,28 +34,49 @@ injectGlobal`
 `;
 
 function App (props){
+  const [infoCounter, setInfoCounter] = useState(0);
+  const [count, setCount] = useState(0);
   const [fetched, setFetched] = useState(false);
   const [content, setContent] = useState(false);
   useEffect(() => {
+    axios.get('/count')
+      .then(res => {
+        if (count !== res.data.count) {
+          setCount(res.data.count);
+        }
+        setInfoCounter(infoCounter + 1);
+      })
+      .catch(err => {
+        console.log('Error Count: ', err.message);
+        setInfoCounter(infoCounter + 1);
+      });
+  }, [infoCounter]);
+  useEffect(() => {
     axios.get('/info')
       .then(res => {
-        console.log(res.data);
+        console.log('info', res.data);
         setContent(res.data);
         setFetched(true);
       })
       .catch((err) => {
-        console.log('Error: ', err.message);
+        console.log('Error Info: ', err.message);
         setFetched(false);
       })
-  }, []);
+  }, [count]);
 
-  return (
-    fetched && content.data
-      ?
-      <SlackApp content={content} />
-      :
-      <div style={{textAlign: 'center', paddingTop: '10%', fontSize: '35px'}}>Veri alırken hata oluştu.</div>
+  if (!fetched) return (
+    <div style={{width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+      <div>Slack Verileri Yükleniyor...</div>
+    </div>
   );
+
+  if (!content.data) return (
+    <div style={{width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+      <div>Bir Hata Oluştu</div>
+    </div>
+  );
+
+  return <SlackApp key={count} content={content} />;
 }
 
 ReactDOM.render(

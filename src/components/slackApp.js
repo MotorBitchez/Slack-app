@@ -14,7 +14,18 @@ import {prepareText} from "./elements";
 import {Reactions} from "./reactions";
 
 export function SlackApp({content}){
-  const date = dateFns.addHours(new Date(), 3);
+  const [date, setDate] = useState(dateFns.addHours(new Date(), 3));
+  let timeInterval;
+  useEffect(() => {
+    timeInterval = setInterval(() => {
+      setDate(dateFns.addHours(new Date(), 3));
+    }, 60 * 1000);
+    return () => {
+      if (timeInterval) {
+        clearInterval(timeInterval);
+      }
+    }
+  }, []);
   let teamImage = content.team.icon.image_230 || content.team.icon.image_132 || content.team.icon.image_original;
   return (
     <React.Fragment>
@@ -36,11 +47,11 @@ export function SlackApp({content}){
     </div>
     <div className={messagePanel}>
       <div style={{display: 'flex', flexDirection: 'column', width: '100%'}}>
-        {content.data.reverse().map((day) => {
+        {content.data.map((day) => {
           return (
             <React.Fragment key={day.date}>
               <Separator date={day.date}/>
-              {day.entries.reverse().map((entry) => <Message entry={entry} users={content.users} bots={content.bots}/>)}
+              {day.entries.map((entry) => <Message key={entry.ts} entry={entry} users={content.users} bots={content.bots}/>)}
             </React.Fragment>
           );
         })}
@@ -63,10 +74,10 @@ const Message = ({entry, users, bots}) => {
         <ProfileInfo name={entry.profile.real_name || entry.profile.name || 'Unknown'} time={entry.ts}/>
         {entry.texts
           ?
-          entry.texts.reverse().map((textItem) => <Text text={prepareText(textItem.text, users, bots)} reactions={textItem.reactions}/>)
+          entry.texts.map((textItem, idx) => <Text key={textItem.text + idx} text={prepareText(textItem.text, users, bots)} reactions={textItem.reactions}/>)
           :
           <Text text={prepareText(entry.text, users, bots)} reactions={(entry.files || entry.attachments) ? [] : entry.reactions}/>}
-        {entry.files && entry.files.map(file => <MessageFile file={file} reactions={entry.reactions}/>)}
+        {entry.files && entry.files.map((file, idx) => <MessageFile file={file} reactions={entry.reactions}/>)}
         {entry.attachments && entry.attachments.map(attachment => <Attachment attachment={attachment} users={users} bots={bots}/>)}
         {entry.attachments && <Reactions reactions={entry.reactions}/>}
       </ContentHolder>

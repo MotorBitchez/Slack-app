@@ -6,7 +6,8 @@ export const Reactions =  ({reactions}) => (
   reactions ?
   <div className={reactionContainer}>
     {reactions.map(reaction => {
-      const html = `${emojione.shortnameToImage(':'+reaction.name+':')}<span>${reaction.count}</span>`;
+      if (reaction.count < 1) return null;
+      const html = `${emojione.shortnameToImage(`:${reaction.name}:`)}<span>${reaction.count}</span>`;
       if (!html.includes('<img')) return null;
       return <div className={reactionStyle} dangerouslySetInnerHTML={{__html: html}} key={reaction.name}/>
     })}

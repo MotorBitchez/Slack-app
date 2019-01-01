@@ -1,6 +1,6 @@
 {
   "name": "slackintegrationhakan",
-  "version": "1.0.9",
+  "version": "1.2.4",
   "description": "Hakan Test Slack Integration for Dashmon",
   "main": "index_bundled.js",
   "scripts": {
