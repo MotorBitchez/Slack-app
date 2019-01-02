@@ -3,6 +3,7 @@ import {css} from "emotion";
 import {Reactions} from "./reactions";
 
 export const MessageFile = ({file, reactions}) => {
+  if (file.mode && file.mode === 'tombstone') return null;
   if (file.mimetype.includes('text')){
     if (!file.preview) return null;
     const previews  = file.preview.split('\n');
@@ -11,8 +12,8 @@ export const MessageFile = ({file, reactions}) => {
         <div className={textFileStyle} key={file.timestamp}>
           <span className="title">{file.title}</span>
           <div className="previewContainer">
-            <div className="previewNumbers">{previews.map((p, index) => <p key={p+index}>{index+1}</p>)}</div>
-            <div className="previewMessages">{previews.map((preview, i) => <span key={preview+i+1}>{preview}</span>)}</div>
+            <div className="previewNumbers">{previews.map((p, index) => <div key={p+index} style={{margin: 0}}>{index+1}</div>)}</div>
+            <div className="previewMessages">{previews.map((preview, i) => <span className={'previewLine'} key={preview+i+1}>{preview}</span>)}</div>
           </div>
         </div>
         <Reactions reactions={reactions}/>
@@ -117,13 +118,13 @@ const textFileStyle = css`
   }
   .previewNumbers{
     display: flex;
-    width: 60px;
+    width: 40px;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     background: rgba(100, 100, 100, 0.2);
     border-radius: 5px 0 0 5px;
-    padding: 0 10px 0 20px ;
+    padding-left: 10px;
   }
   .previewMessages{
     width: calc(100% - 60px);
@@ -136,6 +137,11 @@ const textFileStyle = css`
     padding: 5px 5px 5px 10px;
     & > span {
       width: 100%;
+    }
+    & > .previewLine {
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
     }
   }
 `;

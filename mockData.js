@@ -1,6 +1,6 @@
 const mockData = {
   content: {
-    _id: '5c24b2e8e7e4540639466d99',
+    _id: '5c2ba58ff76d5a3d93441355',
     slackData: {
       channel: {id: 'CEN740MHD', name: 'general'},
       allUsers: true,

@@ -7,6 +7,7 @@ const isDevMode = process.argv.includes('dev');
 
 let _port = 80;
 
+let globalContentId = '';
 let globalContent = {};
 let globalCount = 0;
 
@@ -90,7 +91,7 @@ if(isDevMode){
         display({URL: `http://localhost:${_port}`});
         break;
       case 'slackdata':
-        processWebhookData(data.event);
+        await processWebhookData(data.event);
 
     }
   });
@@ -98,9 +99,8 @@ if(isDevMode){
 
 async function init({content, orientation, port, user}){
   try {
-    console.log('id', content._id);
+    globalContentId = content._id;
     let initialPayload = await axios.post('https://dashboard.dashmon.com/api/slackinitialinfo', {contentId: content._id});
-    console.log(Object.keys(initialPayload.data));
     content.users = initialPayload.data.users;
     content.bots = initialPayload.data.bots;
     content.channelName = content.slackData.channel.name;
@@ -109,27 +109,14 @@ async function init({content, orientation, port, user}){
     content.selectedUserIds = content.slackData.users.map(user => user.id);
     content.initial = initialPayload.data;
     content.messages = initialPayload.data.messages;
-    content.filteredMessages = filterMessages(content.messages, content.slackData.showApps, content.slackData.allUsers, content.selectedUserIds);
-    content.data = setProfiles(processMessages(content.filteredMessages), content.bots, content.users);
     globalContent = content;
+    globalContent.filteredMessages = filterMessages(globalContent.messages, globalContent.slackData.showApps, globalContent.slackData.allUsers, globalContent.selectedUserIds);
+    globalContent.data = await setProfiles(processMessages(globalContent.filteredMessages), globalContent.bots, globalContent.users);
   } catch (err) {
     content.error = err.message;
-    log({message: err.message});
+    log({message: `Error on init: ${err.message}`});
   }
 }
-
-/*
-[
-  {
-    date,
-    entries: [
-      { userId,
-        ts,
-        texts [ {text, reactions, file | attachment} ] }
-    ]
-  }
-]
-*/
 
 function filterMessages(unfilteredMessages, showApps, allUsers, selectedUserIds){
   try {
@@ -144,7 +131,7 @@ function filterMessages(unfilteredMessages, showApps, allUsers, selectedUserIds)
     });
     return filtered.slice(0, 20);
   } catch (e) {
-    console.log('filter messages error', e.message);
+    log({message: `filter messages error ${e.message}`});
   }
 }
 
@@ -168,11 +155,9 @@ function processMessages(rawMessages){
       currentDay.entries.push(currentMessage);
       continue;
     }
-    // && currentDay.entries[currentDay.entries.length - 1] alltan bunu kaldırdım
-    // currentDay.entries.length > 0 ile değiştirdim
     if (previousMessage && previousMessage.user === currentMessage.user &&
       !previousMessage.files && !previousMessage.attachments &&
-      (currentMessage.ts - previousMessage.ts) < 60 &&
+      Math.abs((parseFloat(currentMessage.ts) - parseFloat(previousMessage.ts))) < 60 &&
       currentDay.entries.length > 0
     ) {
       currentDay.entries[currentDay.entries.length - 1].texts.push({text: currentMessage.text, reactions: currentMessage.reactions});
@@ -186,27 +171,35 @@ function processMessages(rawMessages){
   data.forEach(day => {
     day.entries.reverse();
     day.entries.forEach(entry => {
-      if (entry.texts) entry.texts.reverse();
-    });
-  });
-  return data;
-}
-
-function setProfiles(_data, bots, users){
-  let data = Array.from(_data);
-  data.forEach(day => {
-    day.entries.forEach(entry => {
-      if (entry.subtype && entry.subtype === 'bot_message') {
-        entry.profile = bots.find(bot => bot.id === entry.bot_id);
-      } else {
-        entry.profile = users.find(user => user.id === entry.user);
+      if (entry.texts) {
+        entry.texts.reverse();
       }
     });
   });
   return data;
 }
 
-function processWebhookData(event){
+async function setProfiles(_data, bots, users){
+  let data = Array.from(_data);
+  for (let day of data) {
+    for (let entry of day.entries) {
+      if (entry.subtype && entry.subtype === 'bot_message') {
+        let profile = bots.find(bot => bot.id === entry.bot_id);
+        if (!profile) {
+          let botInfo = await axios.post('https://dashboard.dashmon.com/api/slackbotinfo', {contentId: globalContentId, botId: entry.bot_id});
+          bots.push(botInfo.data);
+          profile = botInfo.data;
+        }
+        entry.profile = profile;
+      } else {
+        entry.profile = users.find(user => user.id === entry.user);
+      }
+    }
+  }
+  return data;
+}
+
+async function processWebhookData(event){
   let changed = false;
   switch (event.type) {
     case 'message':
@@ -216,17 +209,8 @@ function processWebhookData(event){
             if (globalContent.slackData.channel.id === event.channel) {
               let deletedMessage = globalContent.messages.find(message => message.ts === event.deleted_ts);
               if (deletedMessage) {
-                console.log(`Deleted message text is: ${deletedMessage.text}`);
                 globalContent.messages = globalContent.messages.filter(message => message.ts !== event.deleted_ts);
                 changed = true;
-              } else {
-                console.log(`Deleted message with ts: ${event.ts}, deleted_ts: ${event.deleted_ts} not found in global content`);
-                let messageWithTS = globalContent.messages.find(message => message.ts === event.ts);
-                if (messageWithTS) {
-                  console.log(`Text of message with ts is: ${messageWithTS.text}`);
-                } else {
-                  console.log(`Message with event.ts is not found either`);
-                }
               }
             }
             break;
@@ -234,11 +218,8 @@ function processWebhookData(event){
             if (globalContent.slackData.channel.id === event.channel) {
               let changedMessage = globalContent.messages.find(message => message.ts === event.message.ts);
               if (changedMessage) {
-                console.log(`Changed message | Old text is: ${changedMessage.text} - New text is: ${event.message.text}`);
                 changedMessage.text = event.message.text;
                 changed = true;
-              } else {
-                console.log(`Changed message with ts: ${event.message.ts} not found in global content`);
               }
             }
             break;
@@ -268,48 +249,54 @@ function processWebhookData(event){
         changed = true;
       }
       break;
-    case 'file_change':
-      break;
-    case 'file_comment_added':
-      break;
-    case 'file_comment_deleted':
-      break;
-    case 'file_comment_edited':
-      break;
-    case 'file_created':
-      break;
     case 'file_deleted':
+      for (let message of globalContent.messages) {
+        if (!message.files) continue;
+        if (!message.files.map(f => f.id).includes(event.file_id)) continue;
+        message.files = message.files.filter(f => f.id !== event.file_id);
+        changed = true;
+      }
       break;
     case 'file_shared':
-      break;
-    case 'file_public':
-      break;
-    case 'file_unshared':
+      try {
+        let fileInfoRes = await axios.post('https://dashboard.dashmon.com/api/slackfileinfo', {contentId: globalContentId, fileId: event.file_id, event_ts: event.event_ts});
+        if (!fileInfoRes.data) break;
+        globalContent.messages.unshift(fileInfoRes.data.message);
+        changed = true;
+      } catch (e) {
+        log({message: `slack file_shared error: ${e.message}`});
+      }
       break;
     case 'member_joined_channel':
       if (event.channel === globalContent.slackData.channel.id) {
-        console.log(`User ${event.user} joined this channel`);
-      } else {
-        console.log(`User ${event.user} joined channel ${event.channel}`);
+        let oldUser = globalContent.users.find(user => user.id === event.user);
+        if (!oldUser) {
+          try {
+            let userRes = await axios.post('https://dashboard.dashmon.com/api/slackuserinfo', {contentId: globalContentId, userId: event.user});
+            if (userRes.data) {
+              globalContent.users.push(userRes.data);
+              changed = true;
+            }
+          } catch (e) {
+            log({message: `slack member joined channel error: ${e.message}`});
+          }
+        }
       }
-      break;
-    case 'member_left_channel':
-      if (event.channel === globalContent.slackData.channel.id) {
-        console.log(`User ${event.user} left this channel`);
-      } else {
-        console.log(`User ${event.user} left channel ${event.channel}`);
-      }
-      break;
-    case 'team_join':
       break;
     case 'user_change':
-      console.log(`User changed: ${JSON.stringify(event.user)}`);
+      let oldUserIndex = -1;
+      globalContent.users.forEach((user, idx) => {
+        if (user.id === event.user.id) oldUserIndex = idx;
+      });
+      if (oldUserIndex > -1) {
+        globalContent.users[oldUserIndex] = event.user;
+        changed = true;
+      }
       break;
     case 'reaction_added':
       if (globalContent.slackData.channel.id === event.item.channel) {
         let message = globalContent.messages.find(message => message.ts === event.item.ts);
         if (message) {
-          console.log(`Text of Message Reaction Added to: ${message.text}`);
           if (!message.reactions) {
             message.reactions = [{name: event.reaction, count: 1}];
           } else {
@@ -321,8 +308,6 @@ function processWebhookData(event){
             }
           }
           changed = true;
-        } else {
-          console.log('Message which reaction is added could not be found');
         }
       }
       break;
@@ -330,7 +315,6 @@ function processWebhookData(event){
       if (globalContent.slackData.channel.id === event.item.channel) {
         let message = globalContent.messages.find(message => message.ts === event.item.ts);
         if (message) {
-          console.log(`Text of Message Reaction Removed from: ${message.text}`);
           if (message.reactions) {
             let oldReaction = message.reactions.find(reaction => reaction.name === event.reaction);
             if (oldReaction) {
@@ -338,8 +322,6 @@ function processWebhookData(event){
               changed = true;
             }
           }
-        } else {
-          console.log('Message which reaction is removed could not be found');
         }
       }
       break;
@@ -348,6 +330,6 @@ function processWebhookData(event){
   }
   if (!changed) return;
   globalContent.filteredMessages = filterMessages(globalContent.messages, globalContent.slackData.showApps, globalContent.slackData.allUsers, globalContent.selectedUserIds);
-  globalContent.data = setProfiles(processMessages(globalContent.filteredMessages), globalContent.bots, globalContent.users);
+  globalContent.data = await setProfiles(processMessages(globalContent.filteredMessages), globalContent.bots, globalContent.users);
   globalCount++;
 }

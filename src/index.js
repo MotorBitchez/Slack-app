@@ -54,7 +54,6 @@ function App (props){
   useEffect(() => {
     axios.get('/info')
       .then(res => {
-        console.log('info', res.data);
         setContent(res.data);
         setFetched(true);
       })

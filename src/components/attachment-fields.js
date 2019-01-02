@@ -6,8 +6,8 @@ export const AttachmentFields = ({attachment}) => {
     <div style={{padding: '5px 0'}}>
       {attachment.fields.map(field => (
         <div className={attachmentFieldStyle(!!field.short)} key={`${field.title}${field.value}`}>
-          <p><strong>{field.title}</strong></p>
-          <p>{field.value}</p>
+          <div><strong>{field.title}</strong></div>
+          <div>{field.value}</div>
         </div>
       ))}
     </div>
